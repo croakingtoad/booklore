@@ -35,6 +35,7 @@ public class BookdropEventHandlerService {
     private final BookdropNotificationService bookdropNotificationService;
     private final AppSettingService appSettingService;
     private final BookdropMetadataService bookdropMetadataService;
+    private final ZipToEpubConverterService zipToEpubConverterService;
 
     private static final long STABILITY_CHECK_INTERVAL_MS = 500;
     private static final int STABILITY_REQUIRED_CHECKS = 3;
@@ -94,6 +95,11 @@ public class BookdropEventHandlerService {
 
                 String filePath = file.toAbsolutePath().toString();
                 String fileName = file.getFileName().toString();
+
+                if (fileName.toLowerCase().endsWith(".zip")) {
+                    handleZipFile(file, kind);
+                    return;
+                }
 
                 if (BookFileExtension.fromFileName(fileName).isEmpty()) {
                     log.info("Unsupported file type detected, ignoring file: {}", fileName);
@@ -166,6 +172,25 @@ public class BookdropEventHandlerService {
             log.info("Deleted {} BookdropFile record(s) from database matching path: {}", deletedCount, deletedPath);
 
             bookdropNotificationService.sendBookdropFileSummaryNotification();
+        }
+    }
+
+    private void handleZipFile(Path zipFile, WatchEvent.Kind<?> kind) {
+        try {
+            if (!waitForFileStability(zipFile)) {
+                log.warn("Zip file did not stabilize within timeout, skipping: {}", zipFile);
+                return;
+            }
+            log.info("Detected zip file in bookdrop, attempting txt→epub conversion: {}", zipFile);
+            Path epub = zipToEpubConverterService.convert(zipFile);
+            if (epub == null) {
+                log.info("Zip contained no .txt files, ignoring: {}", zipFile);
+                return;
+            }
+            Files.deleteIfExists(zipFile);
+            enqueueFile(epub, kind);
+        } catch (IOException e) {
+            log.error("Failed to convert zip to epub: {}", zipFile, e);
         }
     }
 

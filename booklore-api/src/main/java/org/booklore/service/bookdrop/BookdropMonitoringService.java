@@ -161,14 +161,17 @@ public class BookdropMonitoringService {
                             pathStream
                                     .filter(Files::isRegularFile)
                                     .filter(path -> !FileUtils.shouldIgnore(path))
-                                    .filter(path -> BookFileExtension.fromFileName(path.getFileName().toString()).isPresent())
+                                    .filter(path -> BookFileExtension.fromFileName(path.getFileName().toString()).isPresent()
+                                            || path.getFileName().toString().toLowerCase().endsWith(".zip"))
                                     .forEach(path -> eventHandler.enqueueFile(path, StandardWatchEventKinds.ENTRY_CREATE));
                         } catch (IOException e) {
                             log.error("Failed to scan new directory: {}", fullPath, e);
                         }
                     } else {
                         if (!FileUtils.shouldIgnore(fullPath)) {
-                            if (BookFileExtension.fromFileName(fullPath.getFileName().toString()).isPresent()) {
+                            String name = fullPath.getFileName().toString();
+                            if (BookFileExtension.fromFileName(name).isPresent()
+                                    || name.toLowerCase().endsWith(".zip")) {
                                 eventHandler.enqueueFile(fullPath, kind);
                             } else {
                                 log.info("Ignored unsupported file type: {}", fullPath);
@@ -231,7 +234,8 @@ public class BookdropMonitoringService {
         try (Stream<Path> files = Files.walk(bookdrop)) {
             supportedFiles = files.filter(Files::isRegularFile)
                     .filter(path -> !FileUtils.shouldIgnore(path))
-                    .filter(path -> BookFileExtension.fromFileName(path.getFileName().toString()).isPresent())
+                    .filter(path -> BookFileExtension.fromFileName(path.getFileName().toString()).isPresent()
+                            || path.getFileName().toString().toLowerCase().endsWith(".zip"))
                     .toList();
         } catch (IOException e) {
             log.error("Error scanning bookdrop folder", e);

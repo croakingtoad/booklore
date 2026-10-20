@@ -71,4 +71,12 @@ class BookMetadataPublishedDateDeserializationTest {
         assertThatThrownBy(() -> mapper.readValue(json, BookMetadata.class))
                 .isInstanceOf(InvalidFormatException.class);
     }
+
+    @Test
+    void malformed_date_throws_invalid_format_exception() {
+        assertThatThrownBy(() -> mapper.readValue("{\"publishedDate\":\"20\"}", BookMetadata.class))
+                .isInstanceOf(InvalidFormatException.class);
+        assertThatThrownBy(() -> mapper.readValue("{\"publishedDate\":\"abcd\"}", BookMetadata.class))
+                .isInstanceOf(InvalidFormatException.class);
+    }
 }

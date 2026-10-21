@@ -37,9 +37,10 @@ public class ZipToEpubConverterService {
         book.getMetadata().addTitle(baseName);
         book.getMetadata().addAuthor(new Author("Unknown"));
 
-        for (TxtChapter chapter : chapters) {
+        for (int i = 0; i < chapters.size(); i++) {
+            TxtChapter chapter = chapters.get(i);
             String html = wrapInHtml(chapter.title, chapter.body);
-            String href = sanitizeHref(chapter.title) + ".html";
+            String href = i + "_" + sanitizeHref(chapter.title) + ".html";
             Resource resource = new Resource(html.getBytes(StandardCharsets.UTF_8), href);
             resource.setMediaType(MediaTypes.XHTML);
             book.addSection(chapter.title, resource);
@@ -73,10 +74,8 @@ public class ZipToEpubConverterService {
     }
 
     private String wrapInHtml(String title, String body) {
-        String escaped = body
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
+        String safeTitle = escapeXml(title);
+        String escaped = escapeXml(body)
                 .replace("\r\n", "\n")
                 .replace("\n\n", "</p><p>")
                 .replace("\n", "<br/>");
@@ -87,7 +86,14 @@ public class ZipToEpubConverterService {
                 <head><title>%s</title></head>
                 <body><h1>%s</h1><p>%s</p></body>
                 </html>
-                """.formatted(title, title, escaped);
+                """.formatted(safeTitle, safeTitle, escaped);
+    }
+
+    private String escapeXml(String text) {
+        return text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private String stripExtension(String filename) {

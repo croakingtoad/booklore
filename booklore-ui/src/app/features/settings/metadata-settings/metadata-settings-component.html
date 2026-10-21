@@ -35,6 +35,19 @@
               <label class="setting-label">{{ t('autoDownload.enableLabel') }}</label>
             </div>
           </div>
+
+          <div class="setting-item">
+            <label class="setting-label" for="bookdrop-filename-pattern">{{ t('filenamePattern.label') }}</label>
+            <p class="section-description">{{ t('filenamePattern.description') }}</p>
+            <input
+              id="bookdrop-filename-pattern"
+              pInputText
+              class="w-full"
+              [ngModel]="bookdropFilenamePattern"
+              (change)="onBookdropFilenamePatternChange($any($event.target).value)"
+              [placeholder]="t('filenamePattern.placeholder')"
+              [attr.aria-label]="t('filenamePattern.label')"/>
+          </div>
         </div>
       </div>
     </div>

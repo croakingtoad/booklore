@@ -188,6 +188,7 @@ public class AppSettingService {
         builder.pdfCacheSizeInMb(Integer.parseInt(settingPersistenceHelper.getOrCreateSetting(AppSettingKey.PDF_CACHE_SIZE_IN_MB, "5120")));
         builder.maxFileUploadSizeInMb(Integer.parseInt(settingPersistenceHelper.getOrCreateSetting(AppSettingKey.MAX_FILE_UPLOAD_SIZE_IN_MB, "100")));
         builder.metadataDownloadOnBookdrop(Boolean.parseBoolean(settingPersistenceHelper.getOrCreateSetting(AppSettingKey.METADATA_DOWNLOAD_ON_BOOKDROP, "true")));
+        builder.bookdropFilenamePattern(settingPersistenceHelper.getOrCreateSetting(AppSettingKey.BOOKDROP_FILENAME_PATTERN, ""));
 
         String sessionDurationStr = settingsMap.get(AppSettingKey.OIDC_SESSION_DURATION_HOURS.getDbKey());
         if (sessionDurationStr != null && !sessionDurationStr.isBlank()) {

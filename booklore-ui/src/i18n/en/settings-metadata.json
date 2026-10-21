@@ -7,6 +7,11 @@
     "enableLabel": "Enable automatic metadata download for Bookdrop imports",
     "loadError": "Failed to load settings."
   },
+  "filenamePattern": {
+    "label": "Bookdrop filename pattern",
+    "description": "Applied automatically to new Bookdrop files that carry no embedded metadata, instead of using the whole filename as the title. Uses the same placeholders as the pattern extract tool in the Bookdrop review screen. Leave empty to disable.",
+    "placeholder": "{Title} -- {Authors} -- *"
+  },
   "persistence": {
     "sectionTitle": "Metadata Persistence",
     "sectionDesc": "Configure how metadata is written to original files and how files are moved or renamed when metadata changes.",

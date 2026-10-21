@@ -8,6 +8,7 @@ import {Observable} from 'rxjs';
 import {AppSettingKey, AppSettings} from '../../../shared/model/app-settings.model';
 import {filter, take} from 'rxjs/operators';
 import {ToggleSwitch} from 'primeng/toggleswitch';
+import {InputText} from 'primeng/inputtext';
 import {MetadataMatchWeightsComponent} from '../global-preferences/metadata-match-weights/metadata-match-weights-component';
 import {MetadataPersistenceSettingsComponent} from './metadata-persistence-settings/metadata-persistence-settings-component';
 import {PublicReviewsSettingsComponent} from './public-reviews-settings/public-reviews-settings-component';
@@ -23,6 +24,7 @@ import {TranslocoDirective, TranslocoService} from '@jsverse/transloco';
     FormsModule,
     MetadataMatchWeightsComponent,
     ToggleSwitch,
+    InputText,
     MetadataPersistenceSettingsComponent,
     PublicReviewsSettingsComponent,
     MetadataProviderFieldSelectorComponent,
@@ -35,6 +37,7 @@ export class MetadataSettingsComponent implements OnInit {
 
   currentMetadataOptions!: MetadataRefreshOptions;
   metadataDownloadOnBookdrop = true;
+  bookdropFilenamePattern = '';
 
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly settingsHelper = inject(SettingsHelperService);
@@ -49,6 +52,11 @@ export class MetadataSettingsComponent implements OnInit {
   onMetadataDownloadOnBookdropToggle(checked: boolean): void {
     this.metadataDownloadOnBookdrop = checked;
     this.settingsHelper.saveSetting(AppSettingKey.METADATA_DOWNLOAD_ON_BOOKDROP, checked);
+  }
+
+  onBookdropFilenamePatternChange(pattern: string): void {
+    this.bookdropFilenamePattern = pattern.trim();
+    this.settingsHelper.saveSetting(AppSettingKey.BOOKDROP_FILENAME_PATTERN, this.bookdropFilenamePattern);
   }
 
   onMetadataSubmit(metadataRefreshOptions: MetadataRefreshOptions): void {
@@ -75,5 +83,6 @@ export class MetadataSettingsComponent implements OnInit {
     }
 
     this.metadataDownloadOnBookdrop = settings.metadataDownloadOnBookdrop ?? true;
+    this.bookdropFilenamePattern = settings.bookdropFilenamePattern ?? '';
   }
 }

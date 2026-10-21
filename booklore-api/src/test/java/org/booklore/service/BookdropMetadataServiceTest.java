@@ -9,7 +9,9 @@ import org.booklore.model.enums.BookFileExtension;
 import org.booklore.model.enums.MetadataProvider;
 import org.booklore.repository.BookdropFileRepository;
 import org.booklore.service.appsettings.AppSettingService;
+import org.booklore.service.bookdrop.BookdropMetadataHelper;
 import org.booklore.service.bookdrop.BookdropMetadataService;
+import org.booklore.service.bookdrop.FilenamePatternExtractor;
 import org.booklore.service.metadata.MetadataRefreshService;
 import org.booklore.service.metadata.extractor.CbxMetadataExtractor;
 import org.booklore.service.metadata.extractor.EpubMetadataExtractor;
@@ -57,6 +59,10 @@ class BookdropMetadataServiceTest {
     private FileService fileService;
     @Mock
     private MetadataExtractorFactory metadataExtractorFactory;
+    @Mock
+    private FilenamePatternExtractor filenamePatternExtractor;
+    @Mock
+    private BookdropMetadataHelper metadataHelper;
 
     @InjectMocks
     private BookdropMetadataService bookdropMetadataService;
@@ -163,6 +169,78 @@ class BookdropMetadataServiceTest {
         assertThat(result.getFetchedMetadata()).contains("Fetched Book");
         assertThat(result.getStatus()).isEqualTo(PENDING_REVIEW);
         verify(bookdropFileRepository).save(result);
+    }
+
+    @Test
+    void attachInitialMetadata_shouldApplyFilenamePatternWhenFileHasNoEmbeddedTitle() throws Exception {
+        sampleFile.setFileName("Bede's History -- Bede -- Oxford -- Anna's Archive.epub");
+        sampleFile.setFilePath("/tmp/Bede's History -- Bede -- Oxford -- Anna's Archive.epub");
+        String filenameTitle = "Bede's History -- Bede -- Oxford -- Anna's Archive";
+        BookMetadata fromFile = BookMetadata.builder().title(filenameTitle).build();
+        BookMetadata fromPattern = BookMetadata.builder().title("Bede's History").authors(List.of("Bede")).build();
+
+        when(bookdropFileRepository.findById(1L)).thenReturn(Optional.of(sampleFile));
+        when(metadataExtractorFactory.extractMetadata(eq(BookFileExtension.EPUB), any(File.class))).thenReturn(fromFile);
+        when(appSettingService.getAppSettings()).thenReturn(appSettingsWithPattern("{Title} -- {Authors} -- *"));
+        when(filenamePatternExtractor.extractFromFilename(sampleFile.getFileName(), "{Title} -- {Authors} -- *")).thenReturn(fromPattern);
+        when(bookdropFileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        bookdropMetadataService.attachInitialMetadata(1L);
+
+        verify(metadataHelper).mergeMetadata(fromFile, fromPattern);
+    }
+
+    @Test
+    void attachInitialMetadata_shouldNotApplyFilenamePatternWhenFileHasEmbeddedTitle() throws Exception {
+        sampleFile.setFileName("Bede's History -- Bede -- Oxford -- Anna's Archive.epub");
+        sampleFile.setFilePath("/tmp/Bede's History -- Bede -- Oxford -- Anna's Archive.epub");
+        BookMetadata embedded = BookMetadata.builder().title("Ecclesiastical History of the English People").build();
+
+        when(bookdropFileRepository.findById(1L)).thenReturn(Optional.of(sampleFile));
+        when(metadataExtractorFactory.extractMetadata(eq(BookFileExtension.EPUB), any(File.class))).thenReturn(embedded);
+        when(bookdropFileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        bookdropMetadataService.attachInitialMetadata(1L);
+
+        verifyNoInteractions(filenamePatternExtractor);
+        verifyNoInteractions(metadataHelper);
+    }
+
+    @Test
+    void attachInitialMetadata_shouldNotApplyFilenamePatternWhenPatternIsBlank() throws Exception {
+        BookMetadata fromFile = BookMetadata.builder().title("book").build();
+
+        when(bookdropFileRepository.findById(1L)).thenReturn(Optional.of(sampleFile));
+        when(metadataExtractorFactory.extractMetadata(eq(BookFileExtension.EPUB), any(File.class))).thenReturn(fromFile);
+        when(appSettingService.getAppSettings()).thenReturn(appSettingsWithPattern(""));
+        when(bookdropFileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        bookdropMetadataService.attachInitialMetadata(1L);
+
+        verifyNoInteractions(filenamePatternExtractor);
+        verifyNoInteractions(metadataHelper);
+    }
+
+    @Test
+    void attachInitialMetadata_shouldKeepFilenameTitleWhenPatternDoesNotMatch() throws Exception {
+        BookMetadata fromFile = BookMetadata.builder().title("book").build();
+
+        when(bookdropFileRepository.findById(1L)).thenReturn(Optional.of(sampleFile));
+        when(metadataExtractorFactory.extractMetadata(eq(BookFileExtension.EPUB), any(File.class))).thenReturn(fromFile);
+        when(appSettingService.getAppSettings()).thenReturn(appSettingsWithPattern("{Title} -- {Authors} -- *"));
+        when(filenamePatternExtractor.extractFromFilename(anyString(), anyString())).thenReturn(null);
+        when(bookdropFileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        bookdropMetadataService.attachInitialMetadata(1L);
+
+        verifyNoInteractions(metadataHelper);
+        assertThat(fromFile.getTitle()).isEqualTo("book");
+    }
+
+    private AppSettings appSettingsWithPattern(String pattern) {
+        AppSettings settings = new AppSettings();
+        settings.setBookdropFilenamePattern(pattern);
+        return settings;
     }
 
     @Test

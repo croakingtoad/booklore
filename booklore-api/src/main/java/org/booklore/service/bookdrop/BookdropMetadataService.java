@@ -43,17 +43,21 @@ public class BookdropMetadataService {
     private final MetadataExtractorFactory metadataExtractorFactory;
     private final MetadataRefreshService metadataRefreshService;
     private final FileService fileService;
+    private final FilenamePatternExtractor filenamePatternExtractor;
+    private final BookdropMetadataHelper metadataHelper;
 
     @Transactional
     public BookdropFileEntity attachInitialMetadata(Long bookdropFileId) throws JacksonException {
         BookdropFileEntity entity = getOrThrow(bookdropFileId);
+        String filenameTitle = FilenameUtils.getBaseName(entity.getFileName());
         BookMetadata initial = extractInitialMetadata(entity);
         if (initial == null) {
             log.warn("Metadata extraction returned null for file: {}. Using filename as fallback.", entity.getFileName());
             initial = BookMetadata.builder()
-                    .title(FilenameUtils.getBaseName(entity.getFileName()))
+                    .title(filenameTitle)
                     .build();
         }
+        applyFilenamePattern(entity, initial, filenameTitle);
         extractAndSaveCover(entity);
         String initialJson = objectMapper.writeValueAsString(initial);
         entity.setOriginalMetadata(initialJson);
@@ -105,6 +109,28 @@ public class BookdropMetadataService {
         BookFileExtension fileExt = BookFileExtension.fromFileName(file.getName())
             .orElseThrow(() -> ApiError.INVALID_FILE_FORMAT.createException("Unsupported file extension"));
         return metadataExtractorFactory.extractMetadata(fileExt, file);
+    }
+
+    /**
+     * Fills in metadata from the filename when the file itself carries none. The format extractors
+     * fall back to the bare filename as the title, so a title equal to {@code filenameTitle} means
+     * nothing was embedded and the pattern is the only source left.
+     */
+    private void applyFilenamePattern(BookdropFileEntity entity, BookMetadata initial, String filenameTitle) {
+        if (initial.getTitle() != null && !initial.getTitle().equals(filenameTitle)) {
+            return;
+        }
+        String pattern = appSettingService.getAppSettings().getBookdropFilenamePattern();
+        if (pattern == null || pattern.isBlank()) {
+            return;
+        }
+        BookMetadata extracted = filenamePatternExtractor.extractFromFilename(entity.getFileName(), pattern);
+        if (extracted == null) {
+            log.debug("Bookdrop filename pattern did not match '{}', keeping filename as title", entity.getFileName());
+            return;
+        }
+        metadataHelper.mergeMetadata(initial, extracted);
+        log.info("Applied bookdrop filename pattern to '{}' -> title '{}'", entity.getFileName(), initial.getTitle());
     }
 
     private void extractAndSaveCover(BookdropFileEntity entity) {

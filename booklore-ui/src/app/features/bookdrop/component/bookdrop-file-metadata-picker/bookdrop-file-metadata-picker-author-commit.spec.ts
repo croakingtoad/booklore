@@ -75,4 +75,20 @@ describe('BookdropFileMetadataPickerComponent commitPendingAuthor', () => {
 
     expect(component.metadataForm.get('authors')?.value).toEqual(['Helen Woodruff']);
   });
+
+  it('Enter key delegates to commitPendingAuthor and adds the typed author', () => {
+    component.authorInputValue = 'Helen Woodruff';
+
+    component.onAuthorInputKeyUp({key: 'Enter'} as KeyboardEvent);
+
+    expect(component.metadataForm.get('authors')?.value).toEqual(['Helen Woodruff']);
+  });
+
+  it('non-Enter key does not commit the typed author', () => {
+    component.authorInputValue = 'Helen Woodruff';
+
+    component.onAuthorInputKeyUp({key: 'a'} as KeyboardEvent);
+
+    expect(component.metadataForm.get('authors')?.value).toEqual([]);
+  });
 });
